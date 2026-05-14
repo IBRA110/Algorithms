@@ -351,5 +351,56 @@ class AVLTree:
 
 
 if __name__ == "__main__":
-    AVLTree().run()
+ if __name__ == "__main__":
+    tree = AVLTree()
+
+    print("Manual AVLTree console. Commands:")
+    print("+ x      → insert x")
+    print("- x      → delete x")
+    print("? x      → search x")
+    print("sum l r  → range sum [l, r]")
+    print("print    → debug print (in‑order)")
+    print("exit     → quit")
+
+    while True:
+        cmd = input(">>> ").strip().split()
+
+        if not cmd:
+            continue
+
+        op = cmd[0]
+
+        if op == "exit":
+            break
+
+        elif op == "+" and len(cmd) == 2:
+            tree.insert(int(cmd[1]))
+
+        elif op == "-" and len(cmd) == 2:
+            tree.delete(int(cmd[1]))
+
+        elif op == "?" and len(cmd) == 2:
+            print("Found" if tree.search(int(cmd[1])) else "Not found")
+
+        elif op == "sum" and len(cmd) == 3:
+            l = int(cmd[1])
+            r = int(cmd[2])
+            print(tree.range_sum(l, r))
+
+        elif op == "print":
+            # simple in‑order traversal
+            stack = []
+            cur = tree.root
+            out = []
+            while stack or cur:
+                while cur:
+                    stack.append(cur)
+                    cur = cur.left
+                cur = stack.pop()
+                out.append(cur.key)
+                cur = cur.right
+            print(out)
+
+        else:
+            print("Unknown command")
 

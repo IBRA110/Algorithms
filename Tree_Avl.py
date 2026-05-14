@@ -91,360 +91,265 @@ Not found
 
 # Решение
 
-class TreeAvl:
-    def __init__(self, key=None, parent=None, left=None, right=None):
-        self.key = key
-        self.left = left
-        self.right = right
-        self.height = 1
-        self.parent = parent
-        self.size = 1
-        self.sum = self.key
+class AVLTree:
+    class Node:
+        __slots__ = ("key", "left", "right", "height", "size", "sum")
 
-    def insert(self, key):
-        if self.key is None:
+        def __init__(self, key):
             self.key = key
+            self.left = None
+            self.right = None
+            self.height = 1
+            self.size = 1
             self.sum = key
-            return
-        if self.key == key:
-            return
-        if key < self.key: # insert key in left suptree
-            if self.left:
-                self.left.insert(key)
-            else:
-                self.left = TreeAvl(key, self.key)
-        else: # insert key in right suptree
-            if self.right:
-                self.right.insert(key)
-            else:
-                self.right = TreeAvl(key, self.key)
-        self._balance_insert(key)
-        self.size = self._update_size()
-        self.sum = self._update_sum()
 
-    def search(self, x):
-        if self.key == x:
-            return "Found"
-        if self.key == None:
-            return "Not found"
-        if x < self.key: # x might be in left subtree
-            if self.left:
-                return self.left.search(x)
-            else:
-                return "Not found"
-        if x > self.key: # x might be in right subtree
-            if self.right:
-                return self.right.search(x)
-            else:
-                return "Not found"
+    def __init__(self):
+        self.root = None
+        self.s = 0
+        self.MOD = 1000000001
 
-    def delete(self, x):
-        if self.parent is None and self.left and self.right is None and x == self.key:
-            self.key, self.left, self.right = self.left.key, self.left.left, self.left.right
-        elif self.parent is None and self.right and self.left is None and x == self.key:
-            self.key, self.left, self.right = self.right.key, self.right.left, self.right.right
-        else:
-            if x < self.key:
-                if self.left:
-                    self.left = self.left.delete(x)
-            elif x > self.key:
-                if self.right:
-                    self.right = self.right.delete(x)
-            else:
-                if self.left is None and self.right is None:
-                    self.key = None
-                    return
-                elif self.left is None:
-                    return self.right
-                elif self.right is None:
-                    return self.left
-                if self.right.height > self.left.height:
-                    min_val = self.right.find_min()
-                    self.key = min_val
-                    self.right = self.right.delete(min_val)
-                elif self.right.height < self.left.height:
-                    max_val = self.left.find_max()
-                    self.key = max_val
-                    self.left = self.left.delete(max_val)
+    # ----------------- helpers -----------------
+    def _h(self, n):
+        return n.height if n else 0
+
+    def _sz(self, n):
+        return n.size if n else 0
+
+    def _sm(self, n):
+        return n.sum if n else 0
+
+    def _update(self, n):
+        n.height = max(self._h(n.left), self._h(n.right)) + 1
+        n.size = self._sz(n.left) + self._sz(n.right) + 1
+        n.sum = self._sm(n.left) + self._sm(n.right) + n.key
+
+    def _bf(self, n):
+        return self._h(n.left) - self._h(n.right)
+
+    # ----------------- rotations -----------------
+    def _rotate_right(self, y):
+        x = y.left
+        T2 = x.right
+        x.right = y
+        y.left = T2
+        self._update(y)
+        self._update(x)
+        return x
+
+    def _rotate_left(self, x):
+        y = x.right
+        T2 = y.left
+        y.left = x
+        x.right = T2
+        self._update(x)
+        self._update(y)
+        return y
+
+    # ----------------- iterative insert -----------------
+    def insert(self, key):
+        if not self.root:
+            self.root = self.Node(key)
+            return
+
+        stack = []
+        cur = self.root
+
+        # BST insert
+        while True:
+            stack.append(cur)
+            if key == cur.key:
+                return
+            elif key < cur.key:
+                if cur.left:
+                    cur = cur.left
                 else:
-                    min_val = self.right.find_min()
-                    self.key = min_val
-                    self.right = self.right.delete(min_val)
-        self._balance_delete(x)
-        self.size = self._update_size()
-        self.sum = self._update_sum()
-        return self
-
-    def in_order(self):
-        elements = []
-        if self.left: # visit left tree
-            elements += self.left.in_order()
-        elements.append(self.key) # visit base node
-        if self.right: # visit right tree
-            elements += self.right.in_order()
-        return elements
-
-    def pre_order(self):
-        elements = []
-        elements.append(self.key) # visit base node
-        if self.left: # visit left tree
-            elements += self.left.in_order()
-        if self.right: # visit right tree
-            elements += self.right.in_order()
-        return elements
-
-    def post_order(self):
-        elements = []
-        if self.left: # visit left tree
-            elements += self.left.in_order()
-        if self.right: # visit right tree
-            elements += self.right.in_order()
-        elements.append(self.key) # visit base node
-        return elements
-
-    def find_max(self):
-        if self.right is None:
-            return self.key
-        return self.right.find_max()
-
-    def find_min(self):
-        if self.left is None:
-            return self.key
-        return self.left.find_min()
-
-    def display(self):
-        lines, *_ = self._display_aux()
-        for line in lines:
-            print(line)
-
-    def index_search(self, k):
-        leftsize = self.left.size 
-        if k == leftsize + 1:
-            return self.key
-        if k < leftsize + 1:
-            return self.left.order_statistics(k)
-        else:
-            return self.right.order_statistics(k - leftsize - 1)
-
-    def sum_section(self, a, b):
-        if a <= self.key <= b:
-            return self._in_order_section(a, b)
-        if a > self.key < b and self.right is not None:
-            return self.right.sum_section(a, b)
-        if a < self.key > b and self.left is not None:
-            return self.left.sum_section(a, b)
-        else:
-            return 0
-
-    def _in_order_section(self, a, b):
-        elements = self.key
-        if self.left: 
-            elements += self.left._left_count(a)
-        if self.right: 
-            elements += self.right._right_count(b)
-        return elements
-
-    def _left_count(self, a):
-        left_elements = 0
-        if self.key == a:
-            left_elements += self.key
-            if self.right:
-                left_elements += self.right.sum
-        elif self.key < a:
-            if self.right:
-                left_elements += self.right._left_count(a)
-        else:
-            if self.right:
-                left_elements += self.right.sum + self.key
+                    cur.left = self.Node(key)
+                    stack.append(cur.left)
+                    break
             else:
-                left_elements += self.key
-            if self.left:
-                left_elements += self.left._left_count(a)
-        return left_elements
+                if cur.right:
+                    cur = cur.right
+                else:
+                    cur.right = self.Node(key)
+                    stack.append(cur.right)
+                    break
 
-    def _right_count(self, b):
-        right_elements = 0
-        if self.key == b:
-            right_elements += self.key
-            if self.left:
-                right_elements += self.left.sum
-        elif self.key > b:
-            if self.left:
-                right_elements += self.left._right_count(b)
-        else:
-            if self.left:
-                right_elements += self.left.sum + self.key
+        # rebalance bottom-up
+        for i in range(len(stack) - 1, -1, -1):
+            node = stack[i]
+            self._update(node)
+            bf = self._bf(node)
+
+            # Left heavy
+            if bf > 1:
+                if key < node.left.key:
+                    new = self._rotate_right(node)
+                else:
+                    node.left = self._rotate_left(node.left)
+                    new = self._rotate_right(node)
+            # Right heavy
+            elif bf < -1:
+                if key > node.right.key:
+                    new = self._rotate_left(node)
+                else:
+                    node.right = self._rotate_right(node.right)
+                    new = self._rotate_left(node)
             else:
-                right_elements += self.key
-            if self.right:
-                right_elements += self.right._right_count(b)
-        return right_elements
+                continue
 
-    def _update_sum(self):
-        left_sum = 0 # Work out the hieght of the current node after the insertion
-        right_sum = 0
-        if self.left:
-            left_sum = self.left.sum
-        if self.right:
-            right_sum = self.right.sum
-        return left_sum + right_sum + self.key
-
-    def _update_size(self):
-        left_size = 0 # Work out the hieght of the current node after the insertion
-        right_size = 0
-        if self.left:
-            left_size = self.left.size
-        if self.right:
-            right_size = self.right.size
-        return left_size + right_size + 1
-
-    def _balance_insert(self, key):
-        self.height = self._height_meter()
-        left_height = 0
-        right_height = 0
-        if self.right:
-            right_height = self.right.height
-        if self.left:
-            left_height = self.left.height
-        balance = left_height - right_height
-        if balance > 1 and key < self.left.key:
-            return self._turn_right()
-        if balance < -1 and key > self.right.key:
-            return self._turn_left()
-        if balance > 1 and key < self.left.key:
-            return self._turn_left_right()
-        if balance < -1 and key > self.right.key:
-            return self._turn_right_left()
-
-    def _balance_delete(self, key):
-        self.height = self._height_meter()
-        left_height = 0
-        right_height = 0
-        if self.right:
-            right_height = self.right.height
-        if self.left:
-            left_height = self.left.height
-        balance = left_height - right_height
-        if balance > 1 and key > self.left.key:
-            return self._turn_right()
-        if balance < -1 and key < self.right.key:
-            return self._turn_left()
-        if balance > 1 and key > self.left.key:
-            return self._turn_left_right()
-        if balance < -1 and key < self.right.key:
-            return self._turn_right_left()
-
-    def _turn_left(self):
-        new = TreeAvl(self.key, self.parent, self.left, self.right)
-        new.right = self.right.left
-        self.key, self.right, self.left = self.right.key, self.right.right, new
-        self.left.parent = self.key
-        self.left.height = self.left._height_meter()
-        self.left.size = self.left._update_size()
-        self.left.sum = self.left._update_sum()
-        self.height = self._height_meter()
-        self.size = self._update_size()
-        self.sum = self._update_sum()
-
-    def _turn_right(self):
-        new = TreeAvl(self.key, self.parent, self.left, self.right)
-        new.left = self.left.right
-        self.key, self.left, self.right = self.left.key, self.left.left, new
-        self.right.parent = self.key
-        self.right.height = self.right._height_meter()
-        self.right.size = self.right._update_size()
-        self.right.sum = self.right._update_sum()
-        self.height = self._height_meter()
-        self.size = self._update_size()
-        self.sum = self._update_sum()
-
-    def _turn_left_right(self):
-        self.left._turn_left()
-        self._turn_right()
-
-    def _turn_right_left(self):
-        self.right._turn_right()
-        self._turn_left()
-
-    def _height_meter(self):
-        left_child_height = 0 # Work out the hieght of the current node after the insertion
-        right_child_height = 0
-        if self.left:
-            left_child_height = self.left.height
-        if self.right:
-            right_child_height = self.right.height
-        return max(left_child_height, right_child_height) + 1 # Calculate the height after the recursive call is made
-
-    def _display_aux(self):
-        """Returns list of strings, width, height, and horizontal coordinate of the root."""
-        # No child.
-        if self.right is None and self.left is None:
-            line = '%s' % self.key
-            width = len(line)
-            height = 1
-            middle = width // 2
-            return [line], width, height, middle
-
-        # Only left child.
-        if self.right is None:
-            lines, n, p, x = self.left._display_aux()
-            s = '%s' % self.key
-            u = len(s)
-            first_line = (x + 1) * ' ' + (n - x - 1) * '_' + s
-            second_line = x * ' ' + '/' + (n - x - 1 + u) * ' '
-            shifted_lines = [line + u * ' ' for line in lines]
-            return [first_line, second_line] + shifted_lines, n + u, p + 2, n + u // 2
-
-        # Only right child.
-        if self.left is None:
-            lines, n, p, x = self.right._display_aux()
-            s = '%s' % self.key
-            u = len(s)
-            first_line = s + x * '_' + (n - x) * ' '
-            second_line = (u + x) * ' ' + '\\' + (n - x - 1) * ' '
-            shifted_lines = [u * ' ' + line for line in lines]
-            return [first_line, second_line] + shifted_lines, n + u, p + 2, u // 2
-
-        # Two children.
-        left, n, p, x = self.left._display_aux()
-        right, m, q, y = self.right._display_aux()
-        s = '%s' % self.key
-        u = len(s)
-        first_line = (x + 1) * ' ' + (n - x - 1) * '_' + s + y * '_' + (m - y) * ' '
-        second_line = x * ' ' + '/' + (n - x - 1 + u + y) * ' ' + '\\' + (m - y - 1) * ' '
-        if p < q:
-            left += [n * ' '] * (q - p)
-        elif q < p:
-            right += [m * ' '] * (p - q)
-        zipped_lines = zip(left, right)
-        lines = [first_line, second_line] + [a + u * ' ' + b for a, b in zipped_lines]
-        return lines, n + m + u, max(p, q) + 2, n + u // 2
-
-def f(x, s):
-    return (x + s) % 1000000001
-
-def main():
-    avl_tree = TreeAvl()
-    s = 0
-    for i in range(int(input())):
-        i = [i for i in input().split()]
-        if i[0] == "+":
-            avl_tree.insert(f(int(i[1]), s))
-        elif i[0] == "-":
-            if avl_tree.key is not None:
-                avl_tree.delete(f(int(i[1]), s))
-        elif i[0] == "?":
-            print(avl_tree.search(f(int(i[1]), s)))
-        elif i[0] == "s":
-            if avl_tree.key is not None:
-                s = avl_tree.sum_section(f(int(i[1]), s), f(int(i[2]), s))
-                print(s)
+            if i == 0:
+                self.root = new
             else:
-                s = 0
-                print(s)
-        else:
-            print("incorrect input")
-            break
+                parent = stack[i - 1]
+                if parent.left is node:
+                    parent.left = new
+                else:
+                    parent.right = new
 
-if __name__ == '__main__':
-    main()
+    # ----------------- iterative search -----------------
+    def search(self, key):
+        cur = self.root
+        while cur:
+            if key == cur.key:
+                return True
+            cur = cur.left if key < cur.key else cur.right
+        return False
+
+    # ----------------- iterative delete -----------------
+    def delete(self, key):
+        if not self.root:
+            return
+
+        stack = []
+        cur = self.root
+
+        # find node
+        while cur and cur.key != key:
+            stack.append(cur)
+            cur = cur.left if key < cur.key else cur.right
+
+        if not cur:
+            return
+
+        # case: two children → replace with successor
+        if cur.left and cur.right:
+            succ = cur.right
+            stack.append(cur)
+            while succ.left:
+                stack.append(succ)
+                succ = succ.left
+            cur.key = succ.key
+            cur = succ
+
+        # now cur has ≤1 child
+        child = cur.left if cur.left else cur.right
+
+        if not stack:
+            self.root = child
+        else:
+            parent = stack[-1]
+            if parent.left is cur:
+                parent.left = child
+            else:
+                parent.right = child
+
+        # rebalance bottom-up
+        for i in range(len(stack) - 1, -1, -1):
+            node = stack[i]
+            self._update(node)
+            bf = self._bf(node)
+
+            if bf > 1:
+                if self._bf(node.left) >= 0:
+                    new = self._rotate_right(node)
+                else:
+                    node.left = self._rotate_left(node.left)
+                    new = self._rotate_right(node)
+            elif bf < -1:
+                if self._bf(node.right) <= 0:
+                    new = self._rotate_left(node)
+                else:
+                    node.right = self._rotate_right(node.right)
+                    new = self._rotate_left(node)
+            else:
+                continue
+
+            if i == 0:
+                self.root = new
+            else:
+                parent = stack[i - 1]
+                if parent.left is node:
+                    parent.left = new
+                else:
+                    parent.right = new
+
+    # ----------------- O(log n) range sum using subtree sums -----------------
+    def range_sum(self, L, R):
+        total = 0
+        cur = self.root
+
+        while cur:
+            if cur.key < L:
+                cur = cur.right
+            elif cur.key > R:
+                cur = cur.left
+            else:
+                # include this node
+                total += cur.key
+
+                # include left subtree if fully inside
+                if cur.left:
+                    # if max(left subtree) >= L
+                    left = cur.left
+                    while left.right:
+                        left = left.right
+                    if left.key >= L:
+                        total += self._sm(cur.left)
+
+                # include right subtree if fully inside
+                if cur.right:
+                    # if min(right subtree) <= R
+                    right = cur.right
+                    while right.left:
+                        right = right.left
+                    if right.key <= R:
+                        total += self._sm(cur.right)
+
+                # break because we counted everything
+                break
+
+        return total
+
+    # ----------------- f(x, s) -----------------
+    def f(self, x):
+        return (x + self.s) % self.MOD
+
+    # ----------------- main loop -----------------
+    def run(self):
+        n = int(input())
+        for _ in range(n):
+            parts = input().split()
+            op = parts[0]
+
+            if op == "+":
+                x = self.f(int(parts[1]))
+                self.insert(x)
+
+            elif op == "-":
+                x = self.f(int(parts[1]))
+                self.delete(x)
+
+            elif op == "?":
+                x = self.f(int(parts[1]))
+                print("Found" if self.search(x) else "Not found")
+
+            else:  # sum
+                l = self.f(int(parts[1]))
+                r = self.f(int(parts[2]))
+                self.s = self.range_sum(l, r)
+                print(self.s)
+
+
+if __name__ == "__main__":
+    AVLTree().run()
+

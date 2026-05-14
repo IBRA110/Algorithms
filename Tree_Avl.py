@@ -351,7 +351,6 @@ class AVLTree:
 
 
 if __name__ == "__main__":
- if __name__ == "__main__":
     tree = AVLTree()
 
     print("Manual AVLTree console. Commands:")
